@@ -110,6 +110,10 @@ func Login(ctx *gin.Context) {
 		return
 	}
 
+	// new trend is to add jwt to cookie
+	ctx.SetSameSite(http.SameSiteLaxMode)
+	ctx.SetCookie("Authorization", tokenString, 3600, "/login", "localhost", false, true)
+
 	// send it back
 	ctx.JSON(http.StatusOK, gin.H{
 		"token": tokenString,
