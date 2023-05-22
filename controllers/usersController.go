@@ -2,8 +2,8 @@ package controllers
 
 import (
 	"fmt"
-	"jwt_auth_go/initializers"
-	"jwt_auth_go/models"
+	"go_jwt_auth/initializers"
+	"go_jwt_auth/models"
 	"net/http"
 	"os"
 	"time"
@@ -134,6 +134,23 @@ func Login(ctx *gin.Context) {
 		"refreshToken": refreshTokenString,
 		"data":         user,
 	})
+}
+
+// ---------------
+// * Refresh Token
+// ---------------
+func RefreshToken(ctx *gin.Context) {
+	// Get the refresh token
+
+	// Get sub from token
+
+	// Check if sub is valid
+
+	// Generate token
+
+	// Sign token
+
+	// send it back
 }
 
 // ------------

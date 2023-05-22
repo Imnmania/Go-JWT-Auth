@@ -1,6 +1,6 @@
 package initializers
 
-import "jwt_auth_go/models"
+import "go_jwt_auth/models"
 
 func SyncDatabase() {
 	DB.AutoMigrate(&models.User{})

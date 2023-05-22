@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"fmt"
-	"jwt_auth_go/initializers"
-	"jwt_auth_go/models"
+	"go_jwt_auth/initializers"
+	"go_jwt_auth/models"
 	"net/http"
 	"os"
 	"time"

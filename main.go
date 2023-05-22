@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"jwt_auth_go/controllers"
-	"jwt_auth_go/initializers"
-	"jwt_auth_go/middleware"
+	"go_jwt_auth/controllers"
+	"go_jwt_auth/initializers"
+	"go_jwt_auth/middleware"
 
 	"github.com/gin-gonic/gin"
 )
