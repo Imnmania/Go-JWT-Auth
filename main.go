@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"jwt_auth_go/controllers"
 	"jwt_auth_go/initializers"
+	"jwt_auth_go/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,6 +28,7 @@ func main() {
 
 	r.POST("/signup", controllers.SignUp)
 	r.POST("/login", controllers.Login)
+	r.GET("/validate", middleware.RequireAuth, controllers.Validate)
 
 	r.Run()
 }
