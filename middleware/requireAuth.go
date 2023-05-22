@@ -15,7 +15,7 @@ import (
 func RequireAuth(ctx *gin.Context) {
 	fmt.Println("In middleware")
 
-	//? Get the cookie off req
+	// Get the cookie off req
 	tokenString, err := ctx.Cookie("Authorization")
 	fmt.Println("Token from Cookie => ", tokenString)
 	if err != nil {

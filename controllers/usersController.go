@@ -38,10 +38,18 @@ func SignUp(ctx *gin.Context) {
 		return
 	}
 
-	// Create the user
+	// Check if user already exists
 	user := models.User{Email: body.Email, Password: string(hash)}
-	result := initializers.DB.Create(&user)
+	initializers.DB.Find(&user, "email = ?", user.Email)
+	if user.ID != 0 {
+		ctx.AbortWithStatusJSON(http.StatusConflict, gin.H{
+			"message": "User already exists",
+		})
+		return
+	}
 
+	// Create the user
+	result := initializers.DB.Create(&user)
 	if result.Error != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"message": "Failed to create user",
@@ -130,7 +138,7 @@ func Login(ctx *gin.Context) {
 
 	// send it back
 	ctx.JSON(http.StatusOK, gin.H{
-		"token":        tokenString,
+		"accessToken":  tokenString,
 		"refreshToken": refreshTokenString,
 		"data":         user,
 	})
@@ -140,22 +148,93 @@ func Login(ctx *gin.Context) {
 // * Refresh Token
 // ---------------
 func RefreshToken(ctx *gin.Context) {
-	// Get the refresh token
+	// Get the refresh token off cookie or header
+	tokenString, err := ctx.Cookie("Refresh")
+	fmt.Println("Token from Cookie => ", tokenString)
+	if err != nil {
+		tokenString = ctx.GetHeader("Refresh")
+		fmt.Println("Token from Header => ", tokenString)
 
-	// Get sub from token
+		if tokenString == "" {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"message": "Token not found",
+			})
+			return
+		}
+	}
 
-	// Check if sub is valid
+	// Decode/validate
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
+		return []byte(os.Getenv("SECRET")), nil
+	})
+	if err != nil {
+		fmt.Println("Error occured while parsing")
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"message": "Token not valid",
+		})
+		return
+	}
 
-	// Generate token
+	// Get the claims and start the process
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		fmt.Println(claims["sub"], claims["exp"])
 
-	// Sign token
+		// Check the exp
+		if float64(time.Now().Unix()) > claims["exp"].(float64) {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"message": "Token expired",
+			})
+			return
+		}
 
-	// send it back
+		// Find the user with token sub
+		var user models.User
+		initializers.DB.First(&user, claims["sub"])
+
+		if user.ID == 0 {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"message": "User does not exist",
+			})
+			return
+		}
+
+		// Generate token
+		newToken := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
+			"sub": user.ID,
+			"exp": time.Now().Add(time.Hour * 1).Unix(), // 1 hour
+		})
+
+		// Sign new token
+		newTokenString, err := newToken.SignedString([]byte(os.Getenv("SECRET")))
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"message": "Failed to sign token",
+			})
+			return
+		}
+
+		// Add new token with old one to cookie
+		ctx.SetSameSite(http.SameSiteLaxMode)
+		ctx.SetCookie("Authorization", newTokenString, 3600, "", "", false, false)
+		timeRemainingForRefresh := claims["exp"].(float64) - float64(time.Now().Unix())
+		ctx.SetCookie("Refresh", token.Raw, int(timeRemainingForRefresh), "", "", false, false)
+
+		// Send it back
+		ctx.JSON(http.StatusOK, gin.H{
+			"accessToken":  newTokenString,
+			"refreshToken": tokenString,
+		})
+	}
+
 }
 
-// ------------
-// * Middleware
-// ------------
+// ------------------
+// * Middleware Usage
+// ------------------
 func Validate(ctx *gin.Context) {
 	user, _ := ctx.Get("user")
 	// user.(models.User).Email
